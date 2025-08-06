@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Interview Agent{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Welcome back, {{ current_user.username }}!</h1>
+        <p class="text-gray-600 mt-2">Ready to practice your interview skills?</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Start New Interview</dt>
+                            <dd class="text-lg font-medium text-gray-900">Practice Now</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <a href="{{ url_for('start_interview') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium w-full inline-block text-center">
+                        Start Interview
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Completed Interviews</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ recent_interviews|selectattr('status', 'equalto', 'completed')|list|length }}</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <a href="{{ url_for('my_interviews') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium w-full inline-block text-center">
+                        View All
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Average Score</dt>
+                            <dd class="text-lg font-medium text-gray-900">
+                                {% set completed_interviews = recent_interviews|selectattr('status', 'equalto', 'completed')|list %}
+                                {% if completed_interviews %}
+                                    {{ "%.1f"|format(completed_interviews|map(attribute='overall_score')|sum / completed_interviews|length) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Interviews -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md mb-8">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Interviews</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">Your latest interview sessions</p>
+        </div>
+        
+        {% if recent_interviews %}
+            <ul class="divide-y divide-gray-200">
+                {% for interview in recent_interviews %}
+                <li>
+                    <div class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {% if interview.status == 'completed' %}bg-green-100 text-green-800{% elif interview.status == 'in_progress' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ interview.status|title }}
+                                    </span>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ interview.domain.name }} - {{ interview.difficulty_level|title }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        Started: {{ interview.started_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                {% if interview.overall_score %}
+                                    <span class="text-sm font-medium text-gray-900">{{ interview.overall_score }}%</span>
+                                {% endif %}
+                                {% if interview.status == 'completed' %}
+                                    <a href="{{ url_for('results_page', interview_id=interview.id) }}" 
+                                       class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                        View Results
+                                    </a>
+                                {% elif interview.status == 'in_progress' %}
+                                    <a href="{{ url_for('interview_page', interview_id=interview.id) }}" 
+                                       class="text-green-600 hover:text-green-900 text-sm font-medium">
+                                        Continue
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="px-4 py-8 text-center">
+                <p class="text-gray-500">No interviews yet. Start your first interview!</p>
+                <a href="{{ url_for('start_interview') }}" class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    Start Now
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Available Domains -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Available Domains</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">Choose from these interview domains</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
+            {% for domain in domains %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <h4 class="font-medium text-gray-900 mb-2">{{ domain.name }}</h4>
+                    <p class="text-sm text-gray-600 mb-4">{{ domain.description }}</p>
+                    <a href="{{ url_for('start_interview') }}?domain={{ domain.id }}" 
+                       class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                        Start Interview →
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
