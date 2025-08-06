@@ -1,24 +1,42 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
-from coqui_voice_service import voice_service
+import time
 
 from database import db, User, Domain, Question, Interview, Answer, init_default_data
 from auth import bcrypt, login_manager, hash_password, check_password
 from interview import interview_service
 
+# Voice service import with fallback
+try:
+    from coqui_voice_service import voice_service
+    print("✅ Coqui voice service loaded")
+except ImportError as e:
+    print(f"⚠️ Coqui import failed: {e}")
+    try:
+        from simplified_voice_service import voice_service
+        print("✅ Simplified voice service loaded as fallback")
+    except ImportError as e2:
+        print(f"❌ All voice services failed: {e2}")
+        voice_service = None
+
 # Load environment variables
 load_dotenv()
-from voice_service import voice_service
-import threading
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///ai_interview.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Voice file upload configuration
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Create upload directory
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize extensions
 db.init_app(app)
@@ -172,7 +190,7 @@ def api_start_interview():
                 'difficulty': question.difficulty_level
             },
             'question_number': 1,
-            'total_questions': 8  # Updated to match your interview.py
+            'total_questions': 8
         })
         
     except Exception as e:
@@ -180,7 +198,6 @@ def api_start_interview():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-
 
 @app.route('/interview/<int:interview_id>')
 @login_required
@@ -197,7 +214,7 @@ def interview_page(interview_id):
 @app.route('/api/interview/<int:interview_id>/next-question')
 @login_required
 def api_next_question(interview_id):
-    """API endpoint to get next question."""
+    """API endpoint to get next question - Fixed tuple handling."""
     # Verify interview belongs to current user
     interview = Interview.query.filter_by(id=interview_id, user_id=current_user.id).first()
     if not interview:
@@ -206,20 +223,38 @@ def api_next_question(interview_id):
     question = interview_service.get_next_question(interview_id)
     if not question:
         # No more questions, complete interview
-        completed_interview, ai_feedback = interview_service.complete_interview(interview_id)  # FIX: Unpack the tuple
-        return jsonify({
-            'completed': True,
-            'message': 'Interview completed',
-            'overall_score': completed_interview.overall_score,  # Now this works correctly
-            'ai_feedback': {
-                'overall_assessment': ai_feedback.get('overall_assessment', ''),
-                'key_strengths': ai_feedback.get('key_strengths', []),
-                'areas_for_improvement': ai_feedback.get('areas_for_improvement', []),
-                'specific_recommendations': ai_feedback.get('specific_recommendations', []),
-                'next_steps': ai_feedback.get('next_steps', ''),
-                'industry_comparison': ai_feedback.get('industry_comparison', '')
-            }
-        })
+        try:
+            # FIX: Properly handle tuple or single object return
+            result = interview_service.complete_interview(interview_id)
+            
+            if isinstance(result, tuple):
+                # If complete_interview returns (interview, ai_feedback)
+                completed_interview, ai_feedback = result
+                return jsonify({
+                    'completed': True,
+                    'message': 'Interview completed',
+                    'overall_score': completed_interview.overall_score,
+                    'ai_feedback': {
+                        'overall_assessment': ai_feedback.get('overall_assessment', ''),
+                        'key_strengths': ai_feedback.get('key_strengths', []),
+                        'areas_for_improvement': ai_feedback.get('areas_for_improvement', []),
+                        'specific_recommendations': ai_feedback.get('specific_recommendations', []),
+                        'next_steps': ai_feedback.get('next_steps', ''),
+                        'industry_comparison': ai_feedback.get('industry_comparison', '')
+                    }
+                })
+            else:
+                # If complete_interview returns only interview object
+                completed_interview = result
+                return jsonify({
+                    'completed': True,
+                    'message': 'Interview completed',
+                    'overall_score': completed_interview.overall_score
+                })
+                
+        except Exception as e:
+            print(f"Error completing interview: {e}")
+            return jsonify({'error': 'Failed to complete interview'}), 500
     
     # Count current question number
     answered_count = Answer.query.filter_by(interview_id=interview_id).count()
@@ -235,11 +270,10 @@ def api_next_question(interview_id):
         'total_questions': 8
     })
 
-
 @app.route('/api/interview/<int:interview_id>/submit-answer', methods=['POST'])
 @login_required
 def api_submit_answer(interview_id):
-    """API endpoint to submit an answer - now with AI evaluation!"""
+    """API endpoint to submit an answer - Enhanced with AI evaluation."""
     data = request.get_json()
     
     # Verify interview belongs to current user
@@ -251,24 +285,28 @@ def api_submit_answer(interview_id):
     if 'question_id' not in data or 'answer_text' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
     
-    answer, evaluation = interview_service.submit_answer(
-        interview_id=interview_id,
-        question_id=data['question_id'],
-        answer_text=data['answer_text'],
-        time_taken_seconds=data.get('time_taken_seconds')
-    )
-    
-    return jsonify({
-        'answer_id': answer.id,
-        'score': answer.score,
-        'feedback': answer.feedback,
-        'detailed_evaluation': {
-            'strengths': evaluation.get('strengths', []),
-            'improvement_areas': evaluation.get('improvement_areas', []),
-            'follow_up_suggestion': evaluation.get('follow_up_suggestion', '')
-        }
-    })
-
+    try:
+        # Submit answer with AI evaluation
+        answer, evaluation = interview_service.submit_answer(
+            interview_id=interview_id,
+            question_id=data['question_id'],
+            answer_text=data['answer_text'],
+            time_taken_seconds=data.get('time_taken_seconds')
+        )
+        
+        return jsonify({
+            'answer_id': answer.id,
+            'score': answer.score,
+            'feedback': answer.feedback,
+            'detailed_evaluation': {
+                'strengths': evaluation.get('strengths', []),
+                'improvement_areas': evaluation.get('improvement_areas', []),
+                'follow_up_suggestion': evaluation.get('follow_up_suggestion', '')
+            }
+        })
+    except Exception as e:
+        print(f"Error submitting answer: {e}")
+        return jsonify({'error': 'Failed to submit answer'}), 500
 
 @app.route('/results/<int:interview_id>')
 @login_required
@@ -289,6 +327,147 @@ def my_interviews():
     """Page showing all user's interviews."""
     interviews = Interview.query.filter_by(user_id=current_user.id).order_by(Interview.started_at.desc()).all()
     return render_template('my_interviews.html', interviews=interviews)
+
+# Voice Service Endpoints
+@app.route('/api/voice/speak-question', methods=['POST'])
+@login_required  
+def api_speak_question():
+    """Endpoint to make the AI speak a question."""
+    if not voice_service:
+        return jsonify({'error': 'Voice service not available'}), 503
+    
+    data = request.get_json()
+    question_text = data.get('question_text', '')
+    
+    if not question_text:
+        return jsonify({'error': 'No question text provided'}), 400
+    
+    try:
+        # Start speaking the question
+        if hasattr(voice_service, 'speak_question_async'):
+            voice_service.speak_question_async(question_text)
+        else:
+            voice_service.synthesize_speech(question_text)
+        
+        return jsonify({
+            'message': 'Question speech started',
+            'question_text': question_text
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/voice/coqui-speak', methods=['POST'])
+@login_required
+def coqui_speak_question():
+    """Generate speech using Coqui TTS (if available)."""
+    if not voice_service:
+        return jsonify({'error': 'Voice service not available'}), 503
+    
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+        
+        result = voice_service.synthesize_speech(text)
+        
+        if result.get('success'):
+            # Return path to generated audio file
+            return jsonify({
+                'success': True,
+                'audio_url': f'/api/voice/audio/{os.path.basename(result.get("audio_path", ""))}',
+                'duration': result.get('duration', 0)
+            })
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/voice/upload-audio', methods=['POST'])
+@login_required
+def upload_and_transcribe():
+    """Upload audio file and transcribe using Whisper (if available)."""
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+        
+        audio_file = request.files['audio']
+        if audio_file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Save uploaded file
+        from werkzeug.utils import secure_filename
+        filename = secure_filename(audio_file.filename)
+        timestamp = str(int(time.time()))
+        filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        audio_file.save(filepath)
+        
+        # Transcribe if voice service supports it
+        if hasattr(voice_service, 'transcribe_audio'):
+            result = voice_service.transcribe_audio(filepath)
+        else:
+            result = {'success': False, 'error': 'Transcription not available'}
+        
+        # Clean up uploaded file
+        if os.path.exists(filepath):
+            os.unlink(filepath)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/voice/status')
+@login_required
+def api_voice_status():
+    """Get current voice service status."""
+    if not voice_service:
+        return jsonify({
+            'available': False,
+            'error': 'Voice service not loaded'
+        })
+    
+    try:
+        status = voice_service.get_status()
+        status['available'] = True
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        })
+
+@app.route('/api/voice/test')
+@login_required
+def api_test_voice():
+    """Test voice system functionality."""
+    if not voice_service:
+        return jsonify({
+            'available': False,
+            'error': 'Voice service not loaded'
+        })
+    
+    try:
+        results = voice_service.test_system()
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        })
+
+@app.route('/api/voice/audio/<filename>')
+@login_required
+def serve_audio(filename):
+    """Serve generated audio files."""
+    try:
+        # Simple file serving - enhance security in production
+        return send_from_directory('/tmp', filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
 
 # API endpoints for AJAX calls
 @app.route('/api/domains')
@@ -312,116 +491,29 @@ def api_current_user():
         'full_name': current_user.full_name
     })
 
-@app.route('/api/voice/speak-question', methods=['POST'])
-@login_required  
-def api_speak_question():
-    """Endpoint to make the AI speak a question."""
-    data = request.get_json()
-    question_text = data.get('question_text', '')
-    
-    if not question_text:
-        return jsonify({'error': 'No question text provided'}), 400
-    
-    # Start speaking the question
-    voice_service.speak_question(question_text)
-    
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
+# Health check
+@app.route('/health')
+def health_check():
     return jsonify({
-        'message': 'Question speech started',
-        'question_text': question_text
+        'status': 'healthy', 
+        'message': 'AI Interview Agent API is running',
+        'voice_service_available': voice_service is not None,
+        'database_connected': True
     })
-
-@app.route('/api/voice/start-listening', methods=['POST'])
-@login_required
-def api_start_listening():
-    """Start listening for voice input."""
-    data = request.get_json()
-    timeout = data.get('timeout', 30)
-    
-    def speech_callback(recognized_text):
-        """This will be called when speech is recognized."""
-        # Store the recognized text in session or database
-        # For now, we'll just print it
-        print(f"Voice input received: {recognized_text}")
-    
-    voice_service.start_listening(speech_callback, timeout)
-    
-    return jsonify({
-        'message': 'Started listening for voice input',
-        'timeout': timeout,
-        'status': voice_service.get_status()
-    })
-
-@app.route('/api/voice/stop-listening', methods=['POST'])
-@login_required
-def api_stop_listening():
-    """Stop listening for voice input."""
-    voice_service.stop_listening()
-    
-    return jsonify({
-        'message': 'Stopped listening',
-        'status': voice_service.get_status()
-    })
-
-@app.route('/api/voice/status')
-@login_required
-def api_voice_status():
-    """Get current voice service status."""
-    return jsonify(voice_service.get_status())
-
-@app.route('/api/voice/test')
-@login_required
-def api_test_voice():
-    """Test voice system functionality."""
-    results = voice_service.test_voice_system()
-    return jsonify(results)
-
-# Add these new endpoints
-@app.route('/api/voice/coqui-speak', methods=['POST'])
-@login_required
-def coqui_speak_question():
-    """Generate speech using Coqui TTS."""
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
-        
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-        
-        result = voice_service.synthesize_speech(text)
-        
-        if result['success']:
-            # Return path to generated audio file
-            audio_filename = os.path.basename(result['audio_path'])
-            return jsonify({
-                'success': True,
-                'audio_url': f'/api/voice/audio/{audio_filename}',
-                'duration': result.get('duration', 0)
-            })
-        else:
-            return jsonify(result), 500
-            
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/voice/coqui-test')
-@login_required
-def test_coqui_system():
-    """Test Coqui TTS system."""
-    results = voice_service.test_system()
-    return jsonify(results)
-
-@app.route('/api/voice/coqui-models')
-@login_required
-def list_coqui_models():
-    """Get available Coqui models."""
-    models = voice_service.list_available_models()
-    return jsonify({'models': models})
-
-@app.route('/api/voice/coqui-status')
-@login_required
-def get_coqui_status():
-    """Get Coqui TTS status."""
-    return jsonify(voice_service.get_status())
 
 if __name__ == '__main__':
+    print("🚀 Starting AI Interview Agent...")
+    print(f"📊 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+    print(f"🔊 Voice Service Available: {voice_service is not None}")
+    
     app.run(debug=True, host='0.0.0.0', port=5000)
