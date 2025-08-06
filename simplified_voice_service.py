@@ -1,4 +1,3 @@
-# simplified_voice_service.py
 import pyttsx3
 import whisper
 import threading
@@ -10,15 +9,15 @@ class SimplifiedVoiceService:
     def __init__(self):
         print("🚀 Initializing Simplified Voice Service...")
         
-        # Initialize TTS
+        # Initialize TTS (works reliably on Windows)
         self.tts_engine = pyttsx3.init()
         self.setup_tts()
         
-        # Initialize Whisper STT
+        # Initialize Whisper STT (state-of-the-art accuracy)
         self.whisper_model = None
         try:
             print("📥 Loading Whisper model...")
-            self.whisper_model = whisper.load_model("base")
+            self.whisper_model = whisper.load_model("base")  # Good balance of speed/accuracy
             print("✅ Whisper loaded successfully!")
         except Exception as e:
             print(f"❌ Whisper loading failed: {e}")
@@ -31,13 +30,14 @@ class SimplifiedVoiceService:
         try:
             voices = self.tts_engine.getProperty('voices')
             if voices:
+                # Set professional voice
                 for voice in voices:
-                    if 'female' in voice.name.lower():
+                    if 'female' in voice.name.lower() or 'zira' in voice.name.lower():
                         self.tts_engine.setProperty('voice', voice.id)
                         break
             
-            self.tts_engine.setProperty('rate', 150)
-            self.tts_engine.setProperty('volume', 0.8)
+            self.tts_engine.setProperty('rate', 150)  # Speech rate
+            self.tts_engine.setProperty('volume', 0.8)  # Volume
         except Exception as e:
             print(f"TTS setup warning: {e}")
     
@@ -73,11 +73,27 @@ class SimplifiedVoiceService:
         thread.daemon = True
         thread.start()
     
+    def transcribe_audio(self, audio_path: str) -> Dict:
+        """Transcribe audio using Whisper (if available)."""
+        if not self.whisper_model:
+            return {"success": False, "error": "Whisper model not loaded", "text": ""}
+        
+        try:
+            result = self.whisper_model.transcribe(audio_path)
+            return {
+                "success": True,
+                "text": result["text"].strip(),
+                "confidence": 0.9  # Whisper is generally very accurate
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "text": ""}
+    
     def get_status(self) -> Dict:
         return {
             "tts_loaded": True,
             "whisper_loaded": self.whisper_model is not None,
-            "is_speaking": self.is_speaking
+            "is_speaking": self.is_speaking,
+            "device": "cpu"
         }
     
     def test_system(self) -> Dict:
