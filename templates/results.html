@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Results - AI Interview Agent{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Interview Results</h1>
+      <p class="text-gray-600 mt-2">Detailed analysis of your performance</p>
+    </div>
+    <div class="space-x-4">
+      <button id="delete-this-interview" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium">🗑️ Delete This Interview</button>
+      <button id="delete-all-interviews" class="bg-red-800 hover:bg-red-900 text-white px-4 py-2 rounded-md font-medium">🗑️ Delete All Interviews</button>
+    </div>
+  </div>
+
+  <!-- Overall Score -->
+  <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-8 mb-8 text-white text-center">
+    <div class="text-6xl font-bold mb-4">{{ results.interview.overall_score }}/10</div>
+    <h2 class="text-2xl font-semibold mb-2">Overall Performance Score</h2>
+    <div class="flex justify-center space-x-8 mt-6">
+      <div><div class="text-2xl font-bold">{{ results.total_questions }}</div><div class="text-sm">Questions</div></div>
+      <div><div class="text-2xl font-bold">{{ results.duration_minutes }}min</div><div class="text-sm">Duration</div></div>
+      <div><div class="text-2xl font-bold">{{ results.interview.domain.name }}</div><div class="text-sm">Domain</div></div>
+      <div><div class="text-2xl font-bold">{{ results.interview.difficulty_level|title }}</div><div class="text-sm">Difficulty</div></div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Breakdown -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-xl font-semibold mb-6">Performance Breakdown</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <span>Technical Skills</span>
+          <div class="flex items-center space-x-2">
+            <div class="w-32 bg-gray-200 rounded-full h-2">
+              <div class="bg-blue-600 h-2 rounded-full" style="width: {{ results.technical_score * 10 }}%"></div>
+            </div>
+            <span>{{ results.technical_score }}/10</span>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Communication</span>
+          <div class="flex items-center space-x-2">
+            <div class="w-32 bg-gray-200 rounded-full h-2">
+              <div class="bg-green-600 h-2 rounded-full" style="width: {{ results.communication_score * 10 }}%"></div>
+            </div>
+            <span>{{ results.communication_score }}/10</span>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Problem Solving</span>
+          <div class="flex items-center space-x-2">
+            <div class="w-32 bg-gray-200 rounded-full h-2">
+              <div class="bg-purple-600 h-2 rounded-full" style="width: {{ results.problem_solving_score * 10 }}%"></div>
+            </div>
+            <span>{{ results.problem_solving_score }}/10</span>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Clarity & Confidence</span>
+          <div class="flex items-center space-x-2">
+            <div class="w-32 bg-gray-200 rounded-full h-2">
+              <div class="bg-yellow-600 h-2 rounded-full" style="width: {{ results.clarity_score * 10 }}%"></div>
+            </div>
+            <span>{{ results.clarity_score }}/10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Feedback -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-xl font-semibold mb-6">AI Assessment</h3>
+      <div class="space-y-6">
+        <div>
+          <h4 class="font-medium text-green-700 mb-2">💪 Key Strengths</h4>
+          <ul class="list-disc list-inside text-green-600">
+            {% for s in results.ai_feedback.key_strengths %}<li>{{ s }}</li>{% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-medium text-yellow-700 mb-2">📈 Areas for Improvement</h4>
+          <ul class="list-disc list-inside text-yellow-600">
+            {% for a in results.ai_feedback.areas_for_improvement %}<li>{{ a }}</li>{% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-medium text-blue-700 mb-2">💡 Recommendations</h4>
+          <ul class="list-disc list-inside text-blue-600">
+            {% for r in results.ai_feedback.specific_recommendations %}<li>{{ r }}</li>{% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Q&A -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h3 class="text-xl font-semibold mb-6">Question-by-Question Analysis</h3>
+    <div class="space-y-6">
+      {% for ans in results.answers %}
+      <div class="border p-4 rounded-lg">
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <h4 class="font-medium">Question {{ loop.index }}</h4>
+            <p class="text-gray-600">{{ ans.question.question_text }}</p>
+          </div>
+          <div class="text-right">
+            <div class="font-bold text-{{ 'green' if ans.score>=7 else 'yellow' if ans.score>=5 else 'red' }}-600">{{ ans.score }}/10</div>
+            <div class="text-xs text-gray-500">{{ ans.time_taken_seconds }}s</div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <h5 class="text-sm font-medium">Your Answer:</h5>
+            <p class="bg-gray-50 p-3 rounded text-sm">{{ ans.answer_text }}</p>
+          </div>
+          <div>
+            <h5 class="text-sm font-medium">AI Feedback:</h5>
+            <p class="bg-blue-50 p-3 rounded text-sm">{{ ans.feedback }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Summary & Actions -->
+  <div class="bg-white shadow rounded-lg p-6 flex justify-end space-x-4">
+    <a href="{{ url_for('start_interview') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md">New Interview</a>
+    <a href="{{ url_for('my_interviews') }}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md">My Interviews</a>
+  </div>
+</div>
+
+<script>
+document.getElementById('delete-this-interview').onclick = async () => {
+  if (confirm('Delete this interview?')) {
+    const res = await fetch(`/api/interview/{{ results.interview.id }}/delete`, { method:'DELETE' });
+    if (res.ok) location.href = '/dashboard';
+  }
+};
+document.getElementById('delete-all-interviews').onclick = async () => {
+  if (prompt('Type DELETE ALL to confirm:')==='DELETE ALL') {
+    const res = await fetch('/api/interviews/delete-all',{method:'DELETE'});
+    if (res.ok) location.href = '/dashboard';
+  }
+};
+</script>
+{% endblock %}
