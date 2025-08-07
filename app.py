@@ -541,6 +541,56 @@ def api_end_interview_early(interview_id):
         print(f"Error ending interview early: {e}")
         return jsonify({'error': 'Failed to end interview'}), 500
 
+# Add these endpoints after your existing routes (around line 500):
+
+@app.route('/api/interview/<int:interview_id>/delete', methods=['DELETE'])
+@login_required
+def delete_interview(interview_id):
+    """Delete a specific interview."""
+    interview = Interview.query.filter_by(id=interview_id, user_id=current_user.id).first()
+    if not interview:
+        return jsonify({'error': 'Interview not found'}), 404
+    
+    try:
+        # Delete associated answers first
+        Answer.query.filter_by(interview_id=interview_id).delete()
+        # Delete the interview
+        db.session.delete(interview)
+        db.session.commit()
+        
+        return jsonify({'message': 'Interview deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting interview: {e}")
+        return jsonify({'error': 'Failed to delete interview'}), 500
+
+@app.route('/api/interviews/delete-all', methods=['DELETE'])
+@login_required
+def delete_all_interviews():
+    """Delete all interviews for current user."""
+    try:
+        # Get all user's interviews
+        user_interviews = Interview.query.filter_by(user_id=current_user.id).all()
+        interview_ids = [interview.id for interview in user_interviews]
+        
+        if interview_ids:
+            # Delete all associated answers
+            Answer.query.filter(Answer.interview_id.in_(interview_ids)).delete(synchronize_session=False)
+            
+            # Delete all interviews
+            Interview.query.filter_by(user_id=current_user.id).delete()
+            
+            db.session.commit()
+            
+            return jsonify({'message': f'All {len(user_interviews)} interviews deleted successfully'}), 200
+        else:
+            return jsonify({'message': 'No interviews to delete'}), 200
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting all interviews: {e}")
+        return jsonify({'error': 'Failed to delete interviews'}), 500
+
 if __name__ == '__main__':
     print("🚀 Starting AI Interview Agent...")
     print(f"📊 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
