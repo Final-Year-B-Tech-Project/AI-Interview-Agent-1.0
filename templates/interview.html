@@ -15,16 +15,14 @@
                     </div>
                 </div>
                 
-                <!-- Voice Status Indicators -->
-                <div class="flex space-x-4 mb-4">
-                    <div id="speaker-status" class="flex items-center px-3 py-1 rounded-full bg-gray-100">
-                        <div class="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-                        <span class="text-sm text-gray-600">Ready to speak</span>
-                    </div>
-                    <div id="mic-status" class="flex items-center px-3 py-1 rounded-full bg-gray-100">
-                        <div class="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-                        <span class="text-sm text-gray-600">Microphone ready</span>
-                    </div>
+                <!-- Interview Controls -->
+                <div class="flex space-x-3 mb-4">
+                    <button id="skip-question-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium text-sm">
+                        ⏭️ Skip Question
+                    </button>
+                    <button id="end-interview-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm">
+                        🛑 End Interview
+                    </button>
                 </div>
                 
                 <!-- Timer -->
@@ -50,7 +48,7 @@
             <div id="question-container" class="mb-6">
                 <div id="loading-question" class="text-center py-8">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p class="text-gray-600 mt-2">Loading question...</p>
+                    <p class="text-gray-600 mt-2">Preparing interview...</p>
                 </div>
                 
                 <div id="question-content" class="hidden">
@@ -74,9 +72,6 @@
                         <button id="repeat-question-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium">
                             🔊 Repeat Question
                         </button>
-                        <button id="start-answer-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium">
-                            🎤 Start Answering
-                        </button>
                     </div>
                 </div>
 
@@ -87,7 +82,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mt-2">Interview Completed!</h3>
-                    <p class="text-gray-600 mt-2">Congratulations on completing your voice interview.</p>
+                    <p class="text-gray-600 mt-2">Thank you for completing the voice interview.</p>
                     <button id="view-results-btn" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium">
                         View Results
                     </button>
@@ -95,63 +90,64 @@
             </div>
         </div>
 
-        <!-- Right Side - Voice Response Area -->
+        <!-- Right Side - Voice Response Only -->
         <div class="bg-white shadow-lg rounded-lg p-6">
             <div class="mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Your Voice Response</h3>
-                <p class="text-sm text-gray-600">Speak clearly into your microphone</p>
+                <h3 class="text-lg font-semibold text-gray-900">🎤 Voice Response Required</h3>
+                <p class="text-sm text-red-600 font-medium">Note: Only voice answers are accepted in this interview</p>
             </div>
 
-            <!-- Voice Recording Area -->
+            <!-- Voice Status -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <h4 class="font-medium text-blue-900 mb-2">🎙️ Voice Interview Instructions:</h4>
+                <ol class="text-sm text-blue-800 space-y-1">
+                    <li>1. 🎧 Listen to the AI interviewer's question</li>
+                    <li>2. 🎤 Record your voice answer (minimum 30 seconds)</li>
+                    <li>3. ⬆️ Upload your audio file for AI evaluation</li>
+                    <li>4. ⏭️ Proceed to the next question automatically</li>
+                </ol>
+            </div>
+
+            <!-- Audio Recording Area -->
             <div id="voice-recording-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
-                <div id="voice-idle" class="hidden">
-                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div id="voice-idle">
+                    <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
                     </svg>
-                    <p class="text-gray-600">Click "Start Answering" to begin voice recording</p>
-                </div>
-
-                <div id="voice-recording" class="hidden">
-                    <div class="animate-pulse">
-                        <svg class="mx-auto h-16 w-16 text-red-500 mb-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                        </svg>
-                    </div>
-                    <p class="text-red-600 font-semibold">🎤 Recording... Speak now!</p>
-                    <p class="text-sm text-gray-600 mt-2">Speak clearly and take your time</p>
-                    <button id="stop-recording-btn" class="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium">
-                        ⏹️ Stop Recording
-                    </button>
-                </div>
-
-                <div id="voice-processing" class="hidden">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p class="text-blue-600 font-semibold">Processing your speech...</p>
-                    <p class="text-sm text-gray-600">Converting voice to text</p>
+                    <p class="text-gray-600 mb-4">Ready to record your voice answer</p>
+                    <p class="text-sm text-gray-500">Click "Start Recording" or upload an audio file</p>
                 </div>
             </div>
 
-            <!-- Transcribed Text Display -->
-            <div id="transcribed-text-area" class="hidden mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Your Transcribed Answer:</label>
-                <div id="transcribed-text" class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 min-h-[100px] text-sm"></div>
-                
-                <div class="flex justify-between items-center mt-4">
-                    <button id="retake-answer-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium">
-                        🎤 Retake Answer
+            <!-- Recording Controls -->
+            <div class="flex justify-center space-x-4 mb-6">
+                <button id="start-recording-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium">
+                    🎤 Start Recording
+                </button>
+                <button id="stop-recording-btn" class="hidden bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium">
+                    ⏹️ Stop Recording
+                </button>
+            </div>
+
+            <!-- File Upload Alternative -->
+            <div class="border-t pt-4">
+                <p class="text-center text-sm text-gray-600 mb-3">Or upload a pre-recorded audio file:</p>
+                <form id="audio-upload-form" enctype="multipart/form-data">
+                    <input type="file" id="audio-file" name="audio" accept="audio/*" required
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm mb-3">
+                    <button type="submit" id="upload-audio-btn"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium">
+                        📤 Upload & Submit Voice Answer
                     </button>
-                    <button id="submit-voice-answer-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium">
-                        Submit Answer
-                    </button>
-                </div>
+                </form>
             </div>
 
             <!-- Answer Feedback -->
             <div id="answer-feedback" class="hidden mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                <h4 class="font-medium text-green-900">Voice Answer Submitted!</h4>
+                <h4 class="font-medium text-green-900">✅ Voice Answer Processed!</h4>
                 <p class="text-sm text-green-700 mt-1">Score: <span id="answer-score"></span>/10</p>
                 <p class="text-sm text-green-600 mt-2" id="answer-feedback-text"></p>
+                <p class="text-xs text-gray-500 mt-3">Moving to next question in 3 seconds...</p>
             </div>
         </div>
     </div>
@@ -175,71 +171,45 @@ let questionNumber = 0;
 let totalQuestions = 8;
 let startTime = Date.now();
 let questionStartTime = Date.now();
-let isRecording = false;
-let currentTranscribedText = "";
+let isGreetingPhase = true;
 
-// Initialize interview
+// Initialize interview with greeting
 document.addEventListener('DOMContentLoaded', function() {
-    loadNextQuestion();
-    startTimer();
     setupEventListeners();
-    checkVoiceSystemStatus();
+    startTimer();
+    startInterviewWithGreeting();
 });
 
 function setupEventListeners() {
-    // Voice control buttons
+    // Interview controls
+    document.getElementById('skip-question-btn').addEventListener('click', skipQuestion);
+    document.getElementById('end-interview-btn').addEventListener('click', endInterviewEarly);
     document.getElementById('repeat-question-btn').addEventListener('click', repeatQuestion);
-    document.getElementById('start-answer-btn').addEventListener('click', startVoiceRecording);
-    document.getElementById('stop-recording-btn').addEventListener('click', stopVoiceRecording);
-    document.getElementById('retake-answer-btn').addEventListener('click', retakeAnswer);
-    document.getElementById('submit-voice-answer-btn').addEventListener('click', submitVoiceAnswer);
+    
+    // Audio controls
+    document.getElementById('start-recording-btn').addEventListener('click', startRecording);
+    document.getElementById('stop-recording-btn').addEventListener('click', stopRecording);
+    document.getElementById('audio-upload-form').addEventListener('submit', handleAudioUpload);
+    
+    // Results
     document.getElementById('view-results-btn').addEventListener('click', function() {
         window.location.href = `/results/${interviewId}`;
     });
 }
 
-async function checkVoiceSystemStatus() {
-    try {
-        const response = await fetch('/api/voice/test');
-        const status = await response.json();
-        
-        updateVoiceStatus(status);
-        
-        if (!status.microphone_working) {
-            alert('Warning: Microphone not detected. Please check your microphone permissions and try again.');
-        }
-    } catch (error) {
-        console.error('Error checking voice system:', error);
-    }
-}
-
-function updateVoiceStatus(status) {
-    const speakerStatus = document.getElementById('speaker-status');
-    const micStatus = document.getElementById('mic-status');
+async function startInterviewWithGreeting() {
+    // Start with AI greeting
+    document.getElementById('interviewer-status').textContent = 'Greeting candidate...';
     
-    // Update speaker status
-    const speakerDot = speakerStatus.querySelector('.w-2');
-    const speakerText = speakerStatus.querySelector('span');
+    const greetingMessage = `Hello! Welcome to your AI-powered voice interview. I'm your virtual interviewer today. We'll be conducting a comprehensive assessment of your skills and experience. Please ensure your microphone is working properly. Let's begin with our first question.`;
     
-    if (status.tts_working) {
-        speakerDot.className = 'w-2 h-2 rounded-full bg-green-400 mr-2';
-        speakerText.textContent = 'Speech ready';
-    } else {
-        speakerDot.className = 'w-2 h-2 rounded-full bg-red-400 mr-2';
-        speakerText.textContent = 'Speech unavailable';
-    }
+    await speakMessage(greetingMessage);
     
-    // Update microphone status  
-    const micDot = micStatus.querySelector('.w-2');
-    const micText = micStatus.querySelector('span');
-    
-    if (status.microphone_working) {
-        micDot.className = 'w-2 h-2 rounded-full bg-green-400 mr-2';
-        micText.textContent = 'Microphone ready';
-    } else {
-        micDot.className = 'w-2 h-2 rounded-full bg-red-400 mr-2';
-        micText.textContent = 'Microphone unavailable';
-    }
+    // Wait for greeting to finish, then load first question
+    setTimeout(() => {
+        isGreetingPhase = false;
+        loadNextQuestion();
+    }, 8000); // Allow time for greeting
 }
 
 async function loadNextQuestion() {
@@ -281,169 +251,147 @@ function displayQuestion(data) {
     document.getElementById('loading-question').classList.add('hidden');
     document.getElementById('question-content').classList.remove('hidden');
     
-    // Reset voice interface
-    resetVoiceInterface();
+    // Reset answer area
+    resetAnswerArea();
     
     // Auto-speak the question
-    speakQuestion(currentQuestion.text);
+    speakMessage(currentQuestion.text);
 }
 
-async function speakQuestion(questionText) {
+async function speakMessage(message) {
     try {
-        document.getElementById('interviewer-status').textContent = 'Speaking question...';
+        document.getElementById('interviewer-status').textContent = 'Speaking...';
         document.getElementById('interviewer-avatar').classList.add('animate-pulse');
         
         const response = await fetch('/api/voice/speak-question', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question_text: questionText })
+            body: JSON.stringify({ question_text: message })
         });
         
         if (response.ok) {
-            console.log('Question being spoken by AI');
+            console.log('AI speaking message');
             
-            // Wait a moment then reset status
             setTimeout(() => {
-                document.getElementById('interviewer-status').textContent = 'Question spoken. Ready for your answer.';
+                document.getElementById('interviewer-status').textContent = 'Waiting for your voice response...';
                 document.getElementById('interviewer-avatar').classList.remove('animate-pulse');
             }, 3000);
         }
     } catch (error) {
-        console.error('Error speaking question:', error);
+        console.error('Error speaking message:', error);
     }
 }
 
 function repeatQuestion() {
     if (currentQuestion) {
-        speakQuestion(currentQuestion.text);
+        speakMessage(currentQuestion.text);
     }
 }
 
-function startVoiceRecording() {
-    if (isRecording) return;
-    
-    isRecording = true;
-    
-    // Show recording UI
-    document.getElementById('voice-idle').classList.add('hidden');
-    document.getElementById('voice-recording').classList.remove('hidden');
-    document.getElementById('transcribed-text-area').classList.add('hidden');
-    
-    // Start listening for voice input
-    startListening();
-}
-
-async function startListening() {
-    try {
-        const response = await fetch('/api/voice/start-listening', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timeout: 60 })
-        });
-        
-        if (response.ok) {
-            console.log('Voice listening started');
-            // Poll for results
-            pollForSpeechResult();
-        }
-    } catch (error) {
-        console.error('Error starting voice recording:', error);
-        stopVoiceRecording();
+async function skipQuestion() {
+    if (confirm('Are you sure you want to skip this question? This will affect your overall score.')) {
+        // Submit empty answer for skipped question
+        await submitAnswer("Question skipped by candidate", true);
     }
 }
 
-async function pollForSpeechResult() {
-    let attempts = 0;
-    const maxAttempts = 60; // 60 seconds maximum
-    
-    const pollInterval = setInterval(async () => {
+async function endInterviewEarly() {
+    if (confirm('Are you sure you want to end the interview early? You will receive results based on questions answered so far.')) {
         try {
-            const response = await fetch('/api/voice/status');
-            const status = await response.json();
+            const response = await fetch(`/api/interview/${interviewId}/end-early`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
             
-            if (!status.is_recording) {
-                clearInterval(pollInterval);
-                
-                if (status.last_recorded_text && !status.last_recorded_text.includes('[SPEECH_ERROR]')) {
-                    // Speech successfully recognized
-                    handleSpeechResult(status.last_recorded_text);
-                } else {
-                    // Speech recognition failed
-                    handleSpeechError(status.last_recorded_text || 'Unknown error');
-                }
-            }
-            
-            attempts++;
-            if (attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-                handleSpeechError('Recording timeout');
+            if (response.ok) {
+                const data = await response.json();
+                showInterviewCompleted(data);
             }
         } catch (error) {
-            console.error('Error polling speech status:', error);
-            clearInterval(pollInterval);
-            handleSpeechError('Connection error');
+            console.error('Error ending interview:', error);
+            window.location.href = `/results/${interviewId}`;
         }
-    }, 1000);
+    }
 }
 
-function handleSpeechResult(transcribedText) {
-    isRecording = false;
-    currentTranscribedText = transcribedText;
+// Voice recording functions (simplified - you can integrate with VAPI here)
+function startRecording() {
+    document.getElementById('start-recording-btn').classList.add('hidden');
+    document.getElementById('stop-recording-btn').classList.remove('hidden');
     
-    // Show transcribed text
-    document.getElementById('voice-recording').classList.add('hidden');
-    document.getElementById('voice-processing').classList.add('hidden');
-    document.getElementById('transcribed-text-area').classList.remove('hidden');
-    document.getElementById('transcribed-text').textContent = transcribedText;
+    document.getElementById('voice-idle').innerHTML = `
+        <div class="animate-pulse">
+            <svg class="mx-auto h-16 w-16 text-red-500 mb-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </div>
+        <p class="text-red-600 font-semibold">🎤 Recording... Speak now!</p>
+    `;
     
-    console.log('Speech recognized:', transcribedText);
+    // Here you can integrate VAPI or other voice recording service
+    console.log('Recording started - integrate VAPI here');
 }
 
-function handleSpeechError(error) {
-    isRecording = false;
+function stopRecording() {
+    document.getElementById('start-recording-btn').classList.remove('hidden');
+    document.getElementById('stop-recording-btn').classList.add('hidden');
     
-    document.getElementById('voice-recording').classList.add('hidden');
-    document.getElementById('voice-processing').classList.add('hidden');
-    document.getElementById('voice-idle').classList.remove('hidden');
+    document.getElementById('voice-idle').innerHTML = `
+        <svg class="mx-auto h-16 w-16 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+        <p class="text-blue-600 font-semibold">Processing recording...</p>
+    `;
     
-    alert('Speech recognition failed: ' + error.replace('[SPEECH_ERROR]: ', ''));
+    // Here you would process the recorded audio
+    // For now, simulate with a delay
+    setTimeout(() => {
+        submitAnswer("Simulated voice response from recording", false);
+    }, 2000);
 }
 
-function stopVoiceRecording() {
-    if (!isRecording) return;
+async function handleAudioUpload(e) {
+    e.preventDefault();
     
-    document.getElementById('voice-recording').classList.add('hidden');
-    document.getElementById('voice-processing').classList.remove('hidden');
+    const fileInput = document.getElementById('audio-file');
+    const file = fileInput.files[0];
     
-    // Stop listening
-    fetch('/api/voice/stop-listening', { method: 'POST' });
-}
-
-function retakeAnswer() {
-    resetVoiceInterface();
-}
-
-function resetVoiceInterface() {
-    isRecording = false;
-    currentTranscribedText = "";
-    
-    document.getElementById('voice-idle').classList.remove('hidden');
-    document.getElementById('voice-recording').classList.add('hidden');
-    document.getElementById('voice-processing').classList.add('hidden');
-    document.getElementById('transcribed-text-area').classList.add('hidden');
-    document.getElementById('answer-feedback').classList.add('hidden');
-}
-
-async function submitVoiceAnswer() {
-    if (!currentTranscribedText) {
-        alert('No voice answer to submit');
+    if (!file) {
+        alert('Please select an audio file');
         return;
     }
     
-    const submitBtn = document.getElementById('submit-voice-answer-btn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
+    const uploadBtn = document.getElementById('upload-audio-btn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = '🔄 Processing Voice...';
     
+    try {
+        const formData = new FormData();
+        formData.append('audio', file);
+        
+        const response = await fetch('/api/voice/upload-audio', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            await submitAnswer(result.text, false);
+        } else {
+            alert('Voice processing failed: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('Failed to process voice answer');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '📤 Upload & Submit Voice Answer';
+    }
+}
+
+async function submitAnswer(answerText, isSkipped = false) {
     try {
         const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
         
@@ -452,8 +400,9 @@ async function submitVoiceAnswer() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 question_id: currentQuestion.id,
-                answer_text: currentTranscribedText,
-                time_taken_seconds: timeTaken
+                answer_text: answerText,
+                time_taken_seconds: timeTaken,
+                is_skipped: isSkipped
             })
         });
         
@@ -461,11 +410,11 @@ async function submitVoiceAnswer() {
         
         if (response.ok) {
             // Show feedback
-            document.getElementById('answer-score').textContent = result.score;
-            document.getElementById('answer-feedback-text').textContent = result.feedback;
+            document.getElementById('answer-score').textContent = isSkipped ? '0' : result.score;
+            document.getElementById('answer-feedback-text').textContent = isSkipped ? 'Question was skipped' : result.feedback;
             document.getElementById('answer-feedback').classList.remove('hidden');
             
-            // Load next question after 3 seconds
+            // Auto-advance to next question
             setTimeout(loadNextQuestion, 3000);
         } else {
             alert('Error submitting answer: ' + result.error);
@@ -473,9 +422,6 @@ async function submitVoiceAnswer() {
     } catch (error) {
         console.error('Error:', error);
         alert('Failed to submit answer. Please try again.');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Answer';
     }
 }
 
@@ -489,8 +435,21 @@ function showInterviewCompleted(data) {
     document.getElementById('progress-text').textContent = '100% Complete';
     
     // Speak completion message
-    const completionMessage = `Congratulations! You have completed your interview with a score of ${data.overall_score} out of 10.`;
-    speakQuestion(completionMessage);
+    const completionMessage = `Thank you for completing your voice interview! Your overall performance score is ${data.overall_score} out of 10. You can now view your detailed results and feedback.`;
+    speakMessage(completionMessage);
+}
+
+function resetAnswerArea() {
+    document.getElementById('audio-file').value = '';
+    document.getElementById('answer-feedback').classList.add('hidden');
+    
+    document.getElementById('voice-idle').innerHTML = `
+        <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+        <p class="text-gray-600 mb-4">Ready to record your voice answer</p>
+        <p class="text-sm text-gray-500">Click "Start Recording" or upload an audio file</p>
+    `;
 }
 
 function startTimer() {

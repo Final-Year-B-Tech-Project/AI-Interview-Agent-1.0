@@ -21,16 +21,18 @@ class CoquiVoiceService:
         self.is_speaking = False
         self.load_tts_model()
         
+        # Note: Microphone functionality not implemented in this version
+        print("ℹ️  Note: This version supports TTS only. Audio upload required for speech recognition.")
         print("✅ Coqui Voice Service ready!")
     
     def load_tts_model(self):
-        """Load Coqui TTS model."""
+        """Load Coqui TTS model with error handling."""
         try:
             print("📥 Loading TTS model (this may take a moment on first run)...")
             
-            # Use a good English TTS model that works well on your hardware
+            # Use a more stable TTS model
             self.tts_model = TTS(
-                model_name="tts_models/en/ljspeech/tacotron2-DDC",
+                model_name="tts_models/en/ljspeech/glow-tts",  # More stable model
                 progress_bar=False,
                 gpu=(self.device == "cuda")
             )
@@ -38,15 +40,15 @@ class CoquiVoiceService:
             print("✅ TTS model loaded successfully!")
             
         except Exception as e:
-            print(f"❌ Error loading TTS model: {e}")
-            print("🔄 Trying alternative model...")
+            print(f"❌ Error loading primary TTS model: {e}")
+            print("🔄 Trying fallback model...")
             
             try:
-                # Fallback to a lighter model
+                # Fallback to CPU-only model
                 self.tts_model = TTS(
-                    model_name="tts_models/en/ljspeech/glow-tts",
+                    model_name="tts_models/en/ljspeech/speedy-speech",
                     progress_bar=False,
-                    gpu=False  # Force CPU for compatibility
+                    gpu=False  # Force CPU for stability
                 )
                 print("✅ Fallback TTS model loaded!")
                 
@@ -55,12 +57,15 @@ class CoquiVoiceService:
                 raise
     
     def synthesize_speech(self, text: str, output_path: Optional[str] = None) -> Dict:
-        """Generate speech from text using Coqui TTS."""
+        """Generate speech from text with improved error handling."""
         try:
             if not self.tts_model:
                 raise Exception("TTS model not loaded")
             
-            print(f"🔊 Generating speech: {text[:50]}...")
+            # Clean and prepare text for TTS
+            clean_text = self._clean_text_for_tts(text)
+            print(f"🔊 Generating speech: {clean_text[:50]}...")
+            
             self.is_speaking = True
             
             # Create temporary file if no output path specified
@@ -70,13 +75,21 @@ class CoquiVoiceService:
                 temp_file.close()
             
             # Add professional interviewer tone
-            formatted_text = f"Here's your interview question: {text}"
+            formatted_text = f"Here's your interview question: {clean_text}"
             
-            # Generate speech audio
-            self.tts_model.tts_to_file(
-                text=formatted_text,
-                file_path=output_path
-            )
+            # Generate speech audio with error handling
+            try:
+                self.tts_model.tts_to_file(
+                    text=formatted_text[:500],  # Limit text length to avoid tensor issues
+                    file_path=output_path
+                )
+            except Exception as tts_error:
+                print(f"⚠️ TTS generation warning: {tts_error}")
+                # Fallback: try with shorter text
+                self.tts_model.tts_to_file(
+                    text=clean_text[:200],
+                    file_path=output_path
+                )
             
             self.is_speaking = False
             print(f"✅ Speech generated: {output_path}")
@@ -96,6 +109,18 @@ class CoquiVoiceService:
                 "error": str(e),
                 "audio_path": None
             }
+    
+    def _clean_text_for_tts(self, text: str) -> str:
+        """Clean text to avoid TTS tensor dimension errors."""
+        # Remove problematic characters and limit length
+        clean_text = text.replace('\n', ' ').replace('\r', ' ')
+        clean_text = ' '.join(clean_text.split())  # Normalize whitespace
+        
+        # Limit text length to prevent tensor dimension issues
+        if len(clean_text) > 300:
+            clean_text = clean_text[:300] + "..."
+        
+        return clean_text
     
     def speak_question_async(self, question_text: str, callback: Optional[Callable] = None):
         """Generate speech for interview question asynchronously."""
@@ -118,16 +143,6 @@ class CoquiVoiceService:
         thread.daemon = True
         thread.start()
     
-    def list_available_models(self) -> list:
-        """Get list of available TTS models."""
-        try:
-            models = TTS.list_models()
-            english_models = [model for model in models if "en/" in model]
-            return english_models[:10]  # Return top 10 English models
-        except Exception as e:
-            print(f"Error listing models: {e}")
-            return []
-    
     def get_status(self) -> Dict:
         """Get current voice service status."""
         return {
@@ -135,7 +150,8 @@ class CoquiVoiceService:
             "is_speaking": self.is_speaking,
             "device": self.device,
             "gpu_available": torch.cuda.is_available(),
-            "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
+            "microphone_available": False,  # Not implemented in this version
+            "microphone_note": "Audio upload required for speech recognition"
         }
     
     def test_system(self) -> Dict:
@@ -152,7 +168,8 @@ class CoquiVoiceService:
                 "tts_working": result["success"],
                 "gpu_available": torch.cuda.is_available(),
                 "device": self.device,
-                "model_loaded": self.tts_model is not None
+                "model_loaded": self.tts_model is not None,
+                "microphone_working": False  # Not implemented
             }
             
         except Exception as e:

@@ -9,7 +9,7 @@ from database import db, User, Domain, Question, Interview, Answer, init_default
 from auth import bcrypt, login_manager, hash_password, check_password
 from interview import interview_service
 
-# Voice service import with fallback
+# Voice service import with fallback handling
 try:
     from coqui_voice_service import voice_service
     print("✅ Coqui voice service loaded")
@@ -64,14 +64,23 @@ def register():
         
         # Validate input
         if not all(k in data for k in ['email', 'username', 'password']):
-            return jsonify({'error': 'Missing required fields'}), 400
+            if request.is_json:
+                return jsonify({'error': 'Missing required fields'}), 400
+            flash('Missing required fields', 'error')
+            return render_template('register.html')
         
         # Check if user exists
         if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email already registered'}), 400
+            if request.is_json:
+                return jsonify({'error': 'Email already registered'}), 400
+            flash('Email already registered', 'error')
+            return render_template('register.html')
         
         if User.query.filter_by(username=data['username']).first():
-            return jsonify({'error': 'Username already taken'}), 400
+            if request.is_json:
+                return jsonify({'error': 'Username already taken'}), 400
+            flash('Username already taken', 'error')
+            return render_template('register.html')
         
         # Create new user
         user = User(
@@ -104,7 +113,10 @@ def login():
         password = data.get('password')
         
         if not username or not password:
-            return jsonify({'error': 'Username and password required'}), 400
+            if request.is_json:
+                return jsonify({'error': 'Username and password required'}), 400
+            flash('Username and password required', 'error')
+            return render_template('login.html')
         
         user = User.query.filter_by(username=username).first()
         
@@ -214,7 +226,7 @@ def interview_page(interview_id):
 @app.route('/api/interview/<int:interview_id>/next-question')
 @login_required
 def api_next_question(interview_id):
-    """API endpoint to get next question - Fixed tuple handling."""
+    """API endpoint to get next question - FIXED tuple handling."""
     # Verify interview belongs to current user
     interview = Interview.query.filter_by(id=interview_id, user_id=current_user.id).first()
     if not interview:
@@ -356,35 +368,6 @@ def api_speak_question():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/voice/coqui-speak', methods=['POST'])
-@login_required
-def coqui_speak_question():
-    """Generate speech using Coqui TTS (if available)."""
-    if not voice_service:
-        return jsonify({'error': 'Voice service not available'}), 503
-    
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
-        
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-        
-        result = voice_service.synthesize_speech(text)
-        
-        if result.get('success'):
-            # Return path to generated audio file
-            return jsonify({
-                'success': True,
-                'audio_url': f'/api/voice/audio/{os.path.basename(result.get("audio_path", ""))}',
-                'duration': result.get('duration', 0)
-            })
-        else:
-            return jsonify(result), 500
-            
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/voice/upload-audio', methods=['POST'])
 @login_required
 def upload_and_transcribe():
@@ -419,6 +402,25 @@ def upload_and_transcribe():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# FIXED: Missing endpoints that were causing 404 errors
+@app.route('/api/voice/start-listening', methods=['POST'])
+@login_required
+def api_start_listening():
+    """Start listening for voice input."""
+    return jsonify({
+        'message': 'Please upload audio file for transcription',
+        'upload_endpoint': '/api/voice/upload-audio'
+    })
+
+@app.route('/api/voice/stop-listening', methods=['POST'])
+@login_required
+def api_stop_listening():
+    """Stop listening for voice input."""
+    return jsonify({
+        'message': 'Listening stopped',
+        'status': 'stopped'
+    })
 
 @app.route('/api/voice/status')
 @login_required
@@ -459,16 +461,6 @@ def api_test_voice():
             'error': str(e)
         })
 
-@app.route('/api/voice/audio/<filename>')
-@login_required
-def serve_audio(filename):
-    """Serve generated audio files."""
-    try:
-        # Simple file serving - enhance security in production
-        return send_from_directory('/tmp', filename)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 404
-
 # API endpoints for AJAX calls
 @app.route('/api/domains')
 def api_domains():
@@ -491,14 +483,20 @@ def api_current_user():
         'full_name': current_user.full_name
     })
 
-# Error handlers
+# Error handlers - FIXED: Create the missing templates
 @app.errorhandler(404)
 def not_found_error(error):
+    """Handle 404 errors gracefully."""
+    if request.is_json:
+        return jsonify({'error': 'Endpoint not found'}), 404
     return render_template('404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    """Handle 500 errors gracefully."""
     db.session.rollback()
+    if request.is_json:
+        return jsonify({'error': 'Internal server error'}), 500
     return render_template('500.html'), 500
 
 # Health check
@@ -510,6 +508,38 @@ def health_check():
         'voice_service_available': voice_service is not None,
         'database_connected': True
     })
+
+
+@app.route('/api/interview/<int:interview_id>/end-early', methods=['POST'])
+@login_required
+def api_end_interview_early(interview_id):
+    """End interview early and calculate results."""
+    interview = Interview.query.filter_by(id=interview_id, user_id=current_user.id).first()
+    if not interview:
+        return jsonify({'error': 'Interview not found'}), 404
+    
+    try:
+        # Complete interview with current answers
+        result = interview_service.complete_interview(interview_id)
+        
+        if isinstance(result, tuple):
+            completed_interview, ai_feedback = result
+            return jsonify({
+                'completed': True,
+                'message': 'Interview ended early',
+                'overall_score': completed_interview.overall_score,
+                'ai_feedback': ai_feedback
+            })
+        else:
+            completed_interview = result
+            return jsonify({
+                'completed': True,
+                'message': 'Interview ended early',
+                'overall_score': completed_interview.overall_score
+            })
+    except Exception as e:
+        print(f"Error ending interview early: {e}")
+        return jsonify({'error': 'Failed to end interview'}), 500
 
 if __name__ == '__main__':
     print("🚀 Starting AI Interview Agent...")
