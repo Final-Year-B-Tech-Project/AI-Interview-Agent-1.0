@@ -4,6 +4,11 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import time
+import base64
+import cv2
+import numpy as np
+import json
+from datetime import datetime
 
 from database import db, User, Domain, Question, Interview, Answer, init_default_data
 from auth import bcrypt, login_manager, hash_password, check_password
@@ -21,6 +26,16 @@ except ImportError as e:
     except ImportError as e2:
         print(f"❌ All voice services failed: {e2}")
         voice_service = None
+
+# Security and emotion services with fallback handling
+try:
+    from proxy_detection import proxy_detector
+    from emotion_analysis import emotion_analyzer
+    print("✅ Security services loaded")
+except ImportError as e:
+    print(f"⚠️ Security services import failed: {e}")
+    proxy_detector = None
+    emotion_analyzer = None
 
 # Load environment variables
 load_dotenv()
@@ -461,6 +476,100 @@ def api_test_voice():
             'error': str(e)
         })
 
+# NEW: Security & Emotion Analysis Endpoints
+@app.route('/api/security/initialize', methods=['POST'])
+@login_required
+def initialize_security():
+    """Initialize security systems for the interview."""
+    if not proxy_detector:
+        return jsonify({'error': 'Security services not available'}), 503
+    
+    try:
+        data = request.get_json()
+        
+        if 'webcam_frame' in data:
+            # Process base64 image
+            image_data = base64.b64decode(data['webcam_frame'].split(',')[1])
+            nparr = np.frombuffer(image_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            # Initialize proxy detection
+            proxy_result = proxy_detector.initialize_candidate_identity(webcam_frame=frame)
+            
+            return jsonify({
+                'proxy_detection': proxy_result,
+                'emotion_analysis': {'initialized': True},
+                'security_active': True,
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        return jsonify({'error': 'No webcam frame provided'}), 400
+        
+    except Exception as e:
+        print(f"Security initialization error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/security/analyze-frame', methods=['POST'])
+@login_required
+def analyze_security_frame():
+    """Analyze current video frame for security and emotions."""
+    if not proxy_detector or not emotion_analyzer:
+        return jsonify({'error': 'Security services not available'}), 503
+    
+    try:
+        data = request.get_json()
+        
+        if 'frame' in data:
+            # Process base64 image
+            image_data = base64.b64decode(data['frame'].split(',')[1])
+            nparr = np.frombuffer(image_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            # Proxy detection analysis
+            face_verification = proxy_detector.real_time_face_verification(frame)
+            behavioral_analysis = proxy_detector.detect_behavioral_anomalies(frame)
+            screen_sharing = proxy_detector.detect_screen_sharing_indicators(frame)
+            
+            # Emotion analysis
+            emotion_result = emotion_analyzer.analyze_frame_emotions(frame)
+            
+            return jsonify({
+                'proxy_detection': {
+                    'face_verification': face_verification,
+                    'behavioral_analysis': behavioral_analysis,
+                    'screen_sharing': screen_sharing
+                },
+                'emotion_analysis': emotion_result,
+                'timestamp': time.time()
+            })
+        
+        return jsonify({'error': 'No frame provided'}), 400
+        
+    except Exception as e:
+        print(f"Frame analysis error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/security/report')
+@login_required
+def get_security_report():
+    """Generate comprehensive security and emotion report."""
+    if not proxy_detector or not emotion_analyzer:
+        return jsonify({'error': 'Security services not available'}), 503
+    
+    try:
+        proxy_report = proxy_detector.generate_security_report()
+        emotion_report = emotion_analyzer.generate_emotion_report()
+        
+        return jsonify({
+            'proxy_detection_report': proxy_report,
+            'emotion_analysis_report': emotion_report,
+            'generated_at': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Security report error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # API endpoints for AJAX calls
 @app.route('/api/domains')
 def api_domains():
@@ -482,33 +591,6 @@ def api_current_user():
         'email': current_user.email,
         'full_name': current_user.full_name
     })
-
-# Error handlers - FIXED: Create the missing templates
-@app.errorhandler(404)
-def not_found_error(error):
-    """Handle 404 errors gracefully."""
-    if request.is_json:
-        return jsonify({'error': 'Endpoint not found'}), 404
-    return render_template('404.html'), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 errors gracefully."""
-    db.session.rollback()
-    if request.is_json:
-        return jsonify({'error': 'Internal server error'}), 500
-    return render_template('500.html'), 500
-
-# Health check
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'healthy', 
-        'message': 'AI Interview Agent API is running',
-        'voice_service_available': voice_service is not None,
-        'database_connected': True
-    })
-
 
 @app.route('/api/interview/<int:interview_id>/end-early', methods=['POST'])
 @login_required
@@ -540,8 +622,6 @@ def api_end_interview_early(interview_id):
     except Exception as e:
         print(f"Error ending interview early: {e}")
         return jsonify({'error': 'Failed to end interview'}), 500
-
-# Add these endpoints after your existing routes (around line 500):
 
 @app.route('/api/interview/<int:interview_id>/delete', methods=['DELETE'])
 @login_required
@@ -591,9 +671,37 @@ def delete_all_interviews():
         print(f"Error deleting all interviews: {e}")
         return jsonify({'error': 'Failed to delete interviews'}), 500
 
+# Error handlers - FIXED: Create the missing templates
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 errors gracefully."""
+    if request.is_json:
+        return jsonify({'error': 'Endpoint not found'}), 404
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors gracefully."""
+    db.session.rollback()
+    if request.is_json:
+        return jsonify({'error': 'Internal server error'}), 500
+    return render_template('500.html'), 500
+
+# Health check
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy', 
+        'message': 'AI Interview Agent API is running',
+        'voice_service_available': voice_service is not None,
+        'security_services_available': proxy_detector is not None and emotion_analyzer is not None,
+        'database_connected': True
+    })
+
 if __name__ == '__main__':
     print("🚀 Starting AI Interview Agent...")
     print(f"📊 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     print(f"🔊 Voice Service Available: {voice_service is not None}")
+    print(f"🔒 Security Services Available: {proxy_detector is not None and emotion_analyzer is not None}")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
