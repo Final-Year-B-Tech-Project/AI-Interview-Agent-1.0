@@ -1,4 +1,4 @@
-# Flask Core
+# Core Flask Dependencies
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
@@ -9,32 +9,38 @@ python-dotenv==1.0.0
 Flask-CORS==4.0.0
 PyJWT==2.8.0
 
-# AI and NLP - Enhanced versions
+# AI & HTTP
 openai==1.3.7
 requests==2.31.0
 
-# Data Processing - Stable versions
+# Data Processing - Compatible versions
 numpy==1.26.4
 pandas==2.2.2
 scikit-learn==1.3.2
 
-# Voice Processing - Browser-based (no PyAudio/SpeechRecognition)
-# openai-whisper remains for server-side transcription fallback if needed
+# Voice Processing - Browser-based primary
 openai-whisper==20231117
 pyttsx3==2.90
 soundfile>=0.12.1
 librosa>=0.9.0
 
-# Additional dependencies
+# Resume Parsing - textract alternatives
+PyPDF2==3.0.1
+pymupdf==1.23.0
+python-docx==0.8.11
+spacy==3.7.2
+nltk==3.8.1
+
+# Computer Vision & AI - Compatible stack
+opencv-python==4.8.1.78
+tensorflow==2.15.0
+deepface==0.0.79
+
+# MediaPipe alternative - using OpenCV for face detection
+# mediapipe causes too many conflicts, using opencv-based detection instead
+
+# Additional Dependencies
 typing-extensions>=4.6.0
 pydantic==2.5.0
 werkzeug>=2.3.0
-
-
-# Add these new dependencies
-deepface==0.0.79
-face-recognition==1.3.0
-dlib==19.24.2
-mediapipe==0.10.9
-opencv-python==4.8.1.78
-tensorflow==2.13.0
+protobuf==4.25.6
